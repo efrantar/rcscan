@@ -1,0 +1,4 @@
+__pycache__
+build
+cmake-build-debug
+scan.tbl
