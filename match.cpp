@@ -269,6 +269,7 @@ class CubieBuilder {
   int orisum;
   int aperm;
   int aoris;
+  int combs[color::COUNT][color::COUNT]; // keep track of the already found color combinations
 
   bool assign_cubie(int i) {
     int cubie = opts[i].get_cubie();
@@ -324,6 +325,11 @@ class CubieBuilder {
       orisum = 0;
       aperm = 0;
       aoris = 0;
+
+      for (int c = 0; c < color::COUNT; c++) {
+        for (int c1 = 0; c1 < color::COUNT; c1++)
+          combs[c][c1] = (c % 3 != c1 % 3) ? n_oris - 1 : -1; // no same and opposite face combs 
+      }
     }
 
     int get_par() {
@@ -347,12 +353,22 @@ class CubieBuilder {
           if (opts[cubie].get_error())
             return false;
 
-          colset_t diff = opts[cubie].get_colset() ^colsets[cubie]; // latter will always be included in former
+          colset_t diff = opts[cubie].get_colset() ^ colsets[cubie]; // latter will always be included in former
           colsets[cubie] |= diff;
           for (int col = 0; col < color::COUNT; col++) {
             if ((diff & (1 << col)) == 0)
               continue;
+
             colcounts[col]--;
+            for (int col1 = 0; col1 < color::COUNT; col1++) {
+              if (colsets[cubie] & (1 << col1)) {
+                // Don't count pairs fully in `diff` twice
+                int tmp = !(diff & (1 << col1)) || (col < col1);
+                combs[col][col1] -= tmp;
+                combs[col1][col] -= tmp;
+              }
+            }
+
             if (colcounts[col] == 0) { // all cubies of some color known
               for (int i = 0; i < n_cubies; i++) {
                 // Some `colset` update might not have been registered yet
@@ -360,6 +376,33 @@ class CubieBuilder {
                   opts[i].hasnot_col(col);
                   change = true;
                 }
+              }
+              for (int col1 = 0; col1 < color::COUNT; col1++) {
+                // No cubie that is not `col` (or already `col1`) can have `col1`
+                std::cout << colcounts[col] << " " << colcounts[col1] << " " << combs[col][col1] << "\n"; 
+                if (combs[col][col1] == 1 && colcounts[col1] == 1) {
+                  for (int i = 0; i < n_cubies; i++) {
+                    if (!(opts[i].get_colset() & ((1 << col) | (1 << col1)))) {
+                      std::cout << "Test1\n";
+                      opts[i].hasnot_col(col1);
+                      change = true;
+                    }
+                  }
+                }
+              }
+            }
+            if (colcounts[col] == 1) {
+              for (int col1 = 0; col1 < color::COUNT; col1++) {
+                // No cubie that is not `col1` (or already `col`) can have `col`
+                if (combs[col][col1] == 1 && colcounts[col] == 0) {
+                  for (int i = 0; i < n_cubies; i++) {
+                    if (!(opts[i].get_colset() & ((1 << col) | (1 << col1)))) {
+                      std::cout << "Test2\n";
+                      opts[i].hasnot_col(col);
+                      change = true;
+                    }
+                  }
+                }	
               }
             }
           }
@@ -520,7 +563,6 @@ bool init_match() {
   return succ;
 }
 
-/*
 int main() {
   if (!init_match()) {
     std::cout << "Error loading table." << std::endl;
@@ -592,4 +634,4 @@ int main() {
 
   return 0;
 }
-*/
+

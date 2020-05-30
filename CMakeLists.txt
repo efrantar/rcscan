@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(scan)
+project(rcscan)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -pthread")
@@ -10,10 +10,10 @@ include_directories(. ${OpenCV_INCLUDE_DIRS})
 
 add_executable(
     scan
-    main.cpp
+#    main.cpp
     match.h
     match.cpp
-    scan.h
-    scan.cpp
+#    scan.h
+#    scan.cpp
 )
 target_link_libraries(scan ${OpenCV_LIBS})
