@@ -12,6 +12,7 @@
 #include <chrono>
 #include <cstring>
 #include <iostream>
+#include <numeric>
 #include <queue>
 #include <string>
 #include <tuple>
@@ -39,6 +40,33 @@ namespace color {
     {U, R}, {U, F}, {U, L}, {U, B},
     {D, R}, {D, F}, {D, L}, {D, B},
     {F, R}, {F, L}, {B, L}, {B, R}
+  };
+
+  const int FPERMS[][6] = {
+    {U, R, F, D, L, B},
+    {U, B, R, D, F, L},
+    {U, L, B, D, R, F},
+    {U, F, L, D, B, R},
+    {R, U, B, L, D, F},
+    {F, U, R, B, D, L},
+    {L, U, F, R, D, B},
+    {B, U, L, F, D, R},
+    {R, F, U, L, B, D},
+    {B, R, U, F, L, D},
+    {L, B, U, R, F, D},
+    {F, L, U, B, R, D},
+    {D, R, B, U, L, F},
+    {D, F, R, U, B, L},
+    {D, L, F, U, R, B},
+    {D, B, L, U, F, R},
+    {R, D, F, L, U, B},
+    {B, D, R, F, U, L},
+    {L, D, B, R, U, F},
+    {F, D, L, B, U, R},
+    {R, B, D, L, F, U},
+    {F, R, D, B, L, U},
+    {L, F, D, R, B, U},
+    {B, L, D, F, R, U}
   };
 
   const char CHARS[] = {'U', 'R', 'F', 'D', 'L', 'B'};
@@ -82,6 +110,8 @@ namespace cubie {
   };
 
 }
+
+const int N_FPERMS = 24;
 
 // Map a facelet to its position on the corresponding cubie
 const int FACELET_TO_POS[] = {
@@ -196,6 +226,19 @@ class Options {
       int rem1 = 0;
       for (int i = 0; i < rem; i++) {
         if (opts[i].cols[pos] == col)
+          opts[rem1++] = opts[i];
+      }
+      if (rem1 != rem) {
+        rem = rem1;
+        update();
+      } else
+        rem = rem1;
+    }
+
+    void hasnot_poscol(int pos, int col) {
+      int rem1 = 0;
+      for (int i = 0; i < rem; i++) {
+        if (opts[i].cols[pos] != col)
           opts[rem1++] = opts[i];
       }
       if (rem1 != rem) {
@@ -340,6 +383,10 @@ class CubieBuilder {
       opts[cubie].has_poscol(pos, col);
     }
 
+    void notassign_col(int cubie, int pos, int col) {
+      opts[cubie].hasnot_poscol(pos, col);
+    }
+
     void assign_par(int par) {
       this->par = par;
     }
@@ -379,11 +426,9 @@ class CubieBuilder {
               }
               for (int col1 = 0; col1 < color::COUNT; col1++) {
                 // No cubie that is not `col` (or already `col1`) can have `col1`
-                std::cout << colcounts[col] << " " << colcounts[col1] << " " << combs[col][col1] << "\n"; 
                 if (combs[col][col1] == 1 && colcounts[col1] == 1) {
                   for (int i = 0; i < n_cubies; i++) {
                     if (!(opts[i].get_colset() & ((1 << col) | (1 << col1)))) {
-                      std::cout << "Test1\n";
                       opts[i].hasnot_col(col1);
                       change = true;
                     }
@@ -397,12 +442,11 @@ class CubieBuilder {
                 if (combs[col][col1] == 1 && colcounts[col] == 0) {
                   for (int i = 0; i < n_cubies; i++) {
                     if (!(opts[i].get_colset() & ((1 << col) | (1 << col1)))) {
-                      std::cout << "Test2\n";
                       opts[i].hasnot_col(col);
                       change = true;
                     }
                   }
-                }	
+                } 
               }
             }
           }
@@ -467,7 +511,41 @@ class CubieBuilder {
 using CornersBuilder = CubieBuilder<cubie::N_CORNERS, 3, color::CORNERS>;
 using EdgesBuilder = CubieBuilder<cubie::N_EDGES, 2, color::EDGES>;
 
-std::string match_colors(const int bgrs[N_FACELETS][3], int n_attempts) {
+class CentersBuilder {
+  bool poss[N_FPERMS];
+  int rem;
+
+  public:
+    void init() {
+      std::fill(poss, poss + N_FPERMS, true);
+      rem = N_FPERMS;
+    }
+
+    void assign_col(int pos, int col) {
+      for (int i = 0; i < N_FPERMS; i++) {
+        if (poss[i] && color::FPERMS[i][pos] == col) {
+          poss[i] = false;
+          rem--;
+        }
+      }
+    }
+    
+    void notassign_col(int pos, int col) {
+      for (int i = 0; i < N_FPERMS; i++) {
+        if (poss[i] && color::FPERMS[i][pos] != col) {
+          poss[i] = false;
+          rem--;
+        }
+      }
+    }
+
+    bool valid() {
+      return rem > 0;
+    }
+
+};
+
+std::string match_colors(const int bgrs[N_FACELETS][3], int n_attempts, bool fix_centers) {
   int facecube[N_FACELETS];
 
   int conf[N_FACELETS][color::COUNT];
@@ -475,27 +553,46 @@ std::string match_colors(const int bgrs[N_FACELETS][3], int n_attempts) {
     for (int col = 0; col < color::COUNT; col++)
       conf[f][col] = scantbl[256 * (256 * bgrs[f][0] + bgrs[f][1]) + bgrs[f][2]][col];
   }
-
+  
+  int order[N_FACELETS][color::COUNT + 1]; // dummy entry to avoid overflows without an additional if-check
+  for (int f = 0; f < N_FACELETS; f++) {
+    std::iota(order[f], order[f] + color::COUNT, 0);
+    std::sort(order[f], order[f] + color::COUNT, [&conf, f](int i1, int i2) { return conf[f][i1] > conf[f][i2]; }); 
+    order[f][color::COUNT] = order[f][color::COUNT - 1];
+  }
+  
   std::priority_queue<std::tuple<int, int, int>> heap;
   for (int f = 0; f < N_FACELETS; f++) {
-    if (f % 9 == 4) // centers are fixed
+    if (fix_centers && f % 9 == 4) // centers are fixed
       facecube[f] = f / 9;
-    else {
-      int imax = std::max_element(conf[f], conf[f] + color::COUNT) - conf[f];
-      heap.emplace(conf[f][imax], f, imax);
-      conf[f][imax] = -1; // makes it easy to find the next largest index
-    }
+    else
+      heap.emplace(conf[f][order[f][0]] - conf[f][order[f][1]], f, order[f][0]);
   }
-  int attempts[N_FACELETS];
-  std::fill(attempts, attempts + N_FACELETS, n_attempts);
 
   // Pointers to simply swap backups back in instead of having to copy them again
   auto* corners = new CornersBuilder();
   auto* edges = new EdgesBuilder();
+  auto* centers = new CentersBuilder();
   corners->init();
   edges->init();
   auto* corners1 = new CornersBuilder();
   auto* edges1 = new EdgesBuilder();
+  auto* centers1 = new CentersBuilder();
+
+  for (int f = 0; f < N_FACELETS; f++) {
+    int cubie = cubie::FROM_FACELET[f];
+    int pos = FACELET_TO_POS[f];
+    for (int i = n_attempts; i < color::COUNT; i++) {
+      if (f % 9 == 4)
+        centers->notassign_col(f / color::COUNT, order[f][i]);
+      else if ((f % 9) % 2 == 1)
+        edges->notassign_col(cubie, pos, order[f][i]);
+      else
+        corners->notassign_col(cubie, pos, order[f][i]);
+    }
+  }
+  edges->propagate();
+  corners->propagate();
 
   while (!heap.empty()) {
     auto ass = heap.top();
@@ -507,7 +604,12 @@ std::string match_colors(const int bgrs[N_FACELETS][3], int n_attempts) {
     int col = std::get<2>(ass);
 
     bool succ;
-    if ((f % 9) % 2 == 1) { // is on an edge
+    if (f % 9 == 4) { // is a center
+      memcpy(centers1, centers, sizeof(*centers));
+      centers->assign_col(f / color::COUNT, col);
+      if (!(succ = centers->valid()))
+        std::swap(centers1, centers);
+    } if ((f % 9) % 2 == 1) { // is on an edge
       memcpy(edges1, edges, sizeof(*edges));
       edges->assign_col(cubie, pos, col);
       if (!(succ = edges->propagate()))
@@ -519,6 +621,8 @@ std::string match_colors(const int bgrs[N_FACELETS][3], int n_attempts) {
           std::swap(corners1, corners);
         }
       }
+      if (!succ)
+        edges->notassign_col(cubie, pos, col);
     } else {
       memcpy(corners1, corners, sizeof(*corners));
       corners->assign_col(cubie, pos, col);
@@ -532,17 +636,16 @@ std::string match_colors(const int bgrs[N_FACELETS][3], int n_attempts) {
           std::swap(edges1, edges);
         }
       }
+      if (!succ)
+        corners->notassign_col(cubie, pos, col);
     }
 
     if (!succ) {
-      auto tmp = std::max_element(conf[f], conf[f] + color::COUNT);
-      if (*tmp == -1)
+      std::cout << "elim " << f << " " << color::CHARS[col] << std::endl;
+      int next = (std::find(order[f], order[f] + color::COUNT, col) - order[f]) + 1;
+      if (next == n_attempts)
         return ""; // scan error
-      int imax = tmp - conf[f];
-      heap.emplace(conf[f][imax], f, imax);
-      conf[f][imax] = -1;
-      if (--attempts[f] < 0)
-        return ""; // this is mostly to prevent too much constraint forcing on scan errors
+      heap.emplace(conf[f][order[f][next]] - conf[f][order[f][next + 1]], f, order[f][next]);
     } else
       facecube[f] = col;
   }
@@ -569,6 +672,7 @@ int main() {
     return 0;
   }
 
+  // BFLRURLFRFBUDRLDDDUUURFLBBFLLLFDBRBBRUFFLDFLDBDUUBRRUD
   int bgrs[][3] = {
     { 96, 149,  75},
     {117,  31,  10},
