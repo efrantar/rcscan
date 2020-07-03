@@ -10,10 +10,11 @@ include_directories(. ${OpenCV_INCLUDE_DIRS})
 
 add_executable(
     scan
-#    main.cpp
+    main.cpp
     match.h
     match.cpp
-#    scan.h
-#    scan.cpp
+    scan.h
+    scan.cpp
 )
 target_link_libraries(scan ${OpenCV_LIBS})
+

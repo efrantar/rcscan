@@ -1,3 +1,4 @@
+#include <getopt.h>
 #include <fstream>
 #include <string>
 #include <opencv2/opencv.hpp>
@@ -7,11 +8,23 @@
 
 const std::string RECTFILE = "scan.rects";
 
-// For some reasons these IDs have flipped recently ...
-const int UID = 0;
-const int DID = 2;
+int main(int argc, char *argv[]) {
+  bool fix_centers = false;
+  
+  int opt;
+  while ((opt = getopt(argc, argv, "f")) != -1) {
+    switch (opt) {
+      case 'f':
+        fix_centers = true;
+        break;
+      default:
+        std::cout << "Usage: ./scan [-f]" << std::endl;
+        exit(1);
+    }
+  }
 
-int main() {
+  std::cout << "This is rcscan v0.9; copyright Elias Frantar 2020." << std::endl << std::endl;
+
   init_match();
   std::vector<std::vector<cv::Rect>> rects(N_FACELETS);
 
@@ -34,38 +47,33 @@ int main() {
     }
   }
 
-  DoubleCam cam(UID, DID);
-
   std::string cmd;
   cv::Mat frame;
   int bgrs[N_FACELETS][3];
+  
+  std::cout << "Enter >>load FILE<< to load a frame and then >>scan<< to figure out the cube state." << std::endl << std::endl;
 
   while (std::cin) {
     std::cout << "Ready!" << std::endl;
     std::cin >> cmd;
 
-    if (cmd == "start")
-      cam.start();
-    else if (cmd == "stop")
-      cam.stop();
-    else if (cmd == "scan") {
-      cam.frame(frame);
+    if (cmd == "load") {
+      std::string file;
+      std::cin >> file;
+      frame = cv::imread(file, cv::IMREAD_COLOR);
+    } else if (cmd == "scan" && !frame.empty()) {
       std::vector<cv::Scalar> means;
       extract_means(frame, rects, means);
       for (int i = 0; i < N_FACELETS; i++) {
         for (int j = 0; j < 3; j++)
           bgrs[i][j] = means[i][j];
       }
-      std::string facecube = match_colors(bgrs);
+      std::string facecube = match_colors(bgrs, fix_centers);
       std::cout << ((facecube == "") ? "Scan Error." : facecube) << std::endl;
-    } else if (cmd == "save") {
-      std::string file;
-      std::cin >> file;
-      cam.frame(frame);
-      cv::imwrite(file, frame);
     } else
       std::cout << "Error." << std::endl;
   }
 
   return 0;
 }
+

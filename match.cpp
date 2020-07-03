@@ -545,7 +545,7 @@ class CentersBuilder {
 
 };
 
-std::string match_colors(const int bgrs[N_FACELETS][3], int n_attempts, bool fix_centers) {
+std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers, int n_attempts) {
   int facecube[N_FACELETS];
 
   int conf[N_FACELETS][color::COUNT];
@@ -602,9 +602,12 @@ std::string match_colors(const int bgrs[N_FACELETS][3], int n_attempts, bool fix
     int cubie = cubie::FROM_FACELET[f];
     int pos = FACELET_TO_POS[f];
     int col = std::get<2>(ass);
+    std::cout << "assign " << f << " " << color::CHARS[col] << std::endl;
 
     bool succ;
     if (f % 9 == 4) { // is a center
+      if (fix_centers)
+        continue;
       memcpy(centers1, centers, sizeof(*centers));
       centers->assign_col(f / color::COUNT, col);
       if (!(succ = centers->valid()))
@@ -641,8 +644,9 @@ std::string match_colors(const int bgrs[N_FACELETS][3], int n_attempts, bool fix
     }
 
     if (!succ) {
-      std::cout << "elim " << f << " " << color::CHARS[col] << std::endl;
+      std::cout << "elim " << std::endl;
       int next = (std::find(order[f], order[f] + color::COUNT, col) - order[f]) + 1;
+      std::cout << next << "\n";
       if (next == n_attempts)
         return ""; // scan error
       heap.emplace(conf[f][order[f][next]] - conf[f][order[f][next + 1]], f, order[f][next]);
@@ -666,6 +670,7 @@ bool init_match() {
   return succ;
 }
 
+/*
 int main() {
   if (!init_match()) {
     std::cout << "Error loading table." << std::endl;
@@ -738,4 +743,5 @@ int main() {
 
   return 0;
 }
+*/
 
