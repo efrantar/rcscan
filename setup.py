@@ -9,7 +9,6 @@ import time
 import cv2
 import numpy as np
 
-from scan import *
 from train import Rect, read_scanrects, extract_cols
 
 
@@ -18,16 +17,10 @@ COLOR = (0, 0, 0)
 FILE = 'scan.rects'
 SIZE = 5
 
-scanner = Scanner('.')
-scanner.connect()
-scanner.start()
-
-if len(sys.argv) > 1:
-    image = cv2.imread(sys.argv[1])
-else:
-    scanner.save('shot.png')
-    image = cv2.imread('shot.png')
-    os.remove('shot.png')
+if not len(sys.argv):
+    print('Error.')
+    exit()
+image = cv2.imread(sys.argv[1])
 image1 = image.copy()
 
 rects = read_scanrects(FILE)

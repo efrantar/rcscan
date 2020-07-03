@@ -70,6 +70,7 @@ namespace color {
   };
 
   const char CHARS[] = {'U', 'R', 'F', 'D', 'L', 'B'};
+  const std::string NAMES[] = {"orange", "yellow", "blue", "red", "white", "green"};
 }
 
 namespace cubie {
@@ -371,7 +372,7 @@ class CubieBuilder {
 
       for (int c = 0; c < color::COUNT; c++) {
         for (int c1 = 0; c1 < color::COUNT; c1++)
-          combs[c][c1] = (c % 3 != c1 % 3) ? n_oris - 1 : -1; // no same and opposite face combs 
+          combs[c][c1] = (c % 3 != c1 % 3) ? n_oris - 1 : -1; // no same and opposite face combs
       }
     }
 
@@ -439,7 +440,7 @@ class CubieBuilder {
             if (colcounts[col] == 1) {
               for (int col1 = 0; col1 < color::COUNT; col1++) {
                 // No cubie that is not `col1` (or already `col`) can have `col`
-                if (combs[col][col1] == 1 && colcounts[col] == 0) {
+                if (combs[col][col1] == 1 && colcounts[col1] == 0) {
                   for (int i = 0; i < n_cubies; i++) {
                     if (!(opts[i].get_colset() & ((1 << col) | (1 << col1)))) {
                       opts[i].hasnot_col(col);
@@ -523,7 +524,7 @@ class CentersBuilder {
 
     void assign_col(int pos, int col) {
       for (int i = 0; i < N_FPERMS; i++) {
-        if (poss[i] && color::FPERMS[i][pos] == col) {
+        if (poss[i] && color::FPERMS[i][pos] != col) {
           poss[i] = false;
           rem--;
         }
@@ -532,7 +533,7 @@ class CentersBuilder {
     
     void notassign_col(int pos, int col) {
       for (int i = 0; i < N_FPERMS; i++) {
-        if (poss[i] && color::FPERMS[i][pos] != col) {
+        if (poss[i] && color::FPERMS[i][pos] == col) {
           poss[i] = false;
           rem--;
         }
@@ -575,6 +576,7 @@ std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers, int n_
   auto* centers = new CentersBuilder();
   corners->init();
   edges->init();
+  centers->init();
   auto* corners1 = new CornersBuilder();
   auto* edges1 = new EdgesBuilder();
   auto* centers1 = new CentersBuilder();
@@ -584,7 +586,7 @@ std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers, int n_
     int pos = FACELET_TO_POS[f];
     for (int i = n_attempts; i < color::COUNT; i++) {
       if (f % 9 == 4)
-        centers->notassign_col(f / color::COUNT, order[f][i]);
+        centers->notassign_col(f / 9, order[f][i]);
       else if ((f % 9) % 2 == 1)
         edges->notassign_col(cubie, pos, order[f][i]);
       else
@@ -602,17 +604,17 @@ std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers, int n_
     int cubie = cubie::FROM_FACELET[f];
     int pos = FACELET_TO_POS[f];
     int col = std::get<2>(ass);
-    std::cout << "assign " << f << " " << color::CHARS[col] << std::endl;
+    std::cout << "assign " << f << " " << color::NAMES[col] << std::endl;
 
     bool succ;
     if (f % 9 == 4) { // is a center
       if (fix_centers)
         continue;
       memcpy(centers1, centers, sizeof(*centers));
-      centers->assign_col(f / color::COUNT, col);
+      centers->assign_col(f / 9, col);
       if (!(succ = centers->valid()))
         std::swap(centers1, centers);
-    } if ((f % 9) % 2 == 1) { // is on an edge
+    } else if ((f % 9) % 2 == 1) { // is on an edge
       memcpy(edges1, edges, sizeof(*edges));
       edges->assign_col(cubie, pos, col);
       if (!(succ = edges->propagate()))
@@ -646,7 +648,6 @@ std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers, int n_
     if (!succ) {
       std::cout << "elim " << std::endl;
       int next = (std::find(order[f], order[f] + color::COUNT, col) - order[f]) + 1;
-      std::cout << next << "\n";
       if (next == n_attempts)
         return ""; // scan error
       heap.emplace(conf[f][order[f][next]] - conf[f][order[f][next + 1]], f, order[f][next]);
