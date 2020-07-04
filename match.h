@@ -12,8 +12,7 @@ const std::string TBLFILE = "scan.tbl";
 const int N_FACELETS = 54;
 
 bool init_match();
-// `n_attempts` is the maximum number of color options we explore per facelet; 3 is probably optimal here
-std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers = false, int n_attempts = 3);
+std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers = false);
 
 #endif
 

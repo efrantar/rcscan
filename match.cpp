@@ -411,9 +411,10 @@ class CubieBuilder {
             for (int col1 = 0; col1 < color::COUNT; col1++) {
               if (colsets[cubie] & (1 << col1)) {
                 // Don't count pairs fully in `diff` twice
-                int tmp = !(diff & (1 << col1)) || (col < col1);
-                combs[col][col1] -= tmp;
-                combs[col1][col] -= tmp;
+                if (!(diff & (1 << col1)) || (col < col1)) {
+                  combs[col][col1]--;
+                  combs[col1][col]--;
+                }
               }
             }
 
@@ -546,7 +547,7 @@ class CentersBuilder {
 
 };
 
-std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers, int n_attempts) {
+std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers) {
   int facecube[N_FACELETS];
 
   int conf[N_FACELETS][color::COUNT];
@@ -554,7 +555,6 @@ std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers, int n_
     for (int col = 0; col < color::COUNT; col++)
       conf[f][col] = scantbl[256 * (256 * bgrs[f][0] + bgrs[f][1]) + bgrs[f][2]][col];
   }
-  
   int order[N_FACELETS][color::COUNT + 1]; // dummy entry to avoid overflows without an additional if-check
   for (int f = 0; f < N_FACELETS; f++) {
     std::iota(order[f], order[f] + color::COUNT, 0);
@@ -581,16 +581,19 @@ std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers, int n_
   auto* edges1 = new EdgesBuilder();
   auto* centers1 = new CentersBuilder();
 
+  // Eliminate impossible options according to model (helps to return scan errors on unsolvable cubes)
   for (int f = 0; f < N_FACELETS; f++) {
     int cubie = cubie::FROM_FACELET[f];
     int pos = FACELET_TO_POS[f];
-    for (int i = n_attempts; i < color::COUNT; i++) {
+    for (int col = 0; col < color::COUNT; col++) {
+      if (conf[f][col] > 0)
+        continue;
       if (f % 9 == 4)
-        centers->notassign_col(f / 9, order[f][i]);
+        centers->notassign_col(f / 9, col);
       else if ((f % 9) % 2 == 1)
-        edges->notassign_col(cubie, pos, order[f][i]);
+        edges->notassign_col(cubie, pos, col);
       else
-        corners->notassign_col(cubie, pos, order[f][i]);
+        corners->notassign_col(cubie, pos, col);
     }
   }
   edges->propagate();
@@ -604,7 +607,7 @@ std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers, int n_
     int cubie = cubie::FROM_FACELET[f];
     int pos = FACELET_TO_POS[f];
     int col = std::get<2>(ass);
-    std::cout << "assign " << f << " " << color::NAMES[col] << std::endl;
+    // std::cout << "assign " << f << " " << color::NAMES[col] << std::endl;
 
     bool succ;
     if (f % 9 == 4) { // is a center
@@ -646,9 +649,9 @@ std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers, int n_
     }
 
     if (!succ) {
-      std::cout << "elim " << std::endl;
+      // std::cout << "elim " << std::endl;
       int next = (std::find(order[f], order[f] + color::COUNT, col) - order[f]) + 1;
-      if (next == n_attempts)
+      if (conf[f][order[f][next]] == 0)
         return ""; // scan error
       heap.emplace(conf[f][order[f][next]] - conf[f][order[f][next + 1]], f, order[f][next]);
     } else

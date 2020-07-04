@@ -19,13 +19,16 @@ int main(int argc, char *argv[]) {
         break;
       default:
         std::cout << "Usage: ./scan [-f]" << std::endl;
-        exit(1);
+        return 1;
     }
   }
 
   std::cout << "This is rcscan v0.9; copyright Elias Frantar 2020." << std::endl << std::endl;
 
-  init_match();
+  if (!init_match()) {
+    std::cout << "Error loading `scan.tbl`." << std::endl;
+    return 0;
+  }
   std::vector<std::vector<cv::Rect>> rects(N_FACELETS);
 
   std::ifstream f(RECTFILE);
