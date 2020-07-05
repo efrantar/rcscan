@@ -1,6 +1,7 @@
 # Minimal utility for setting up the scan-positions.
 # It is rather primitive and not at all user-friendly yet it gets the job done decently enough.
 
+import argparse
 import os
 import pickle
 import sys
@@ -9,32 +10,28 @@ import time
 import cv2
 import numpy as np
 
+from scan import *
 from train import Rect, read_scanrects, extract_cols
 
 
 GUI = 'Scan Setup'
 COLOR = (0, 0, 0)
-FILE = 'scan.rects'
 SIZE = 5
 
-if not len(sys.argv):
-    print('Error.')
-    exit()
-image = cv2.imread(sys.argv[1])
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--rects', default='scan.rects', help='rects-file')
+parser.add_argument('imgfile', type=str, help='image')
+args = parser.parse_args()
+
+image = cv2.imread(args.imgfile)
 image1 = image.copy()
 
+FILE = args.rects
 rects = read_scanrects(FILE)
 i = len(rects)
 rects.append([])
 
-
-def update_cam():
-    global image
-    global image1
-    scanner.save('shot.png')
-    image = cv2.imread('shot.png')
-    image1 = image.copy()
-    os.remove('shot.png')
 
 def show_squares():
     global image1
@@ -67,9 +64,11 @@ def show_matched():
     if len(rects) != 55:
         return
 
-    tick = time.time()
-    facecube = scanner.scan()
-    print(time.time() - tick)
+    with Scanner() as scanner:
+        scanner.load(args.imgfile)
+        tick = time.time()
+        facecube = scanner.scan()
+        print(time.time() - tick)
 
     if facecube == '':
         facecube = 'E' * 54
@@ -125,9 +124,6 @@ while True:
     if key == ord('i'):
         rects.append([])
         i += 1
-    elif key == ord('c'):
-        update_cam()
-        show()
     elif key == ord('s'):
         show = show_squares
         show()
