@@ -6,19 +6,21 @@
 #include "match.h"
 #include "scan.h"
 
-const std::string RECTFILE = "scan.rects";
-
 int main(int argc, char *argv[]) {
+  std::string rectfile = "scan.rects";
   bool fix_centers = false;
   
   int opt;
-  while ((opt = getopt(argc, argv, "f")) != -1) {
+  while ((opt = getopt(argc, argv, "r:f")) != -1) {
     switch (opt) {
+      case 'r':
+        rectfile = optarg;
+        break;
       case 'f':
         fix_centers = true;
         break;
       default:
-        std::cout << "Usage: ./scan [-f]" << std::endl;
+        std::cout << "Usage: ./scan [-r RECTFILE] [-f]" << std::endl;
         return 1;
     }
   }
@@ -31,7 +33,7 @@ int main(int argc, char *argv[]) {
   }
   std::vector<std::vector<cv::Rect>> rects(N_FACELETS);
 
-  std::ifstream f(RECTFILE);
+  std::ifstream f(rectfile);
   std::string l;
   for (int i = 0; i < N_FACELETS; i++) {
     if (!std::getline(f, l))

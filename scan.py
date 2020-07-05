@@ -3,10 +3,17 @@ from subprocess import Popen, PIPE
 
 class Scanner:
 
+    def __init__(self, rectfile='', fix_centers=False):
+        self.rectfile = rectfile
+        self.fix_centers = fix_centers
+
     def connect(self):
-        self.proc = Popen(
-            ['./scan'], stdin=PIPE, stdout=PIPE
-        )
+        cmd = ['./scan']
+        if self.rectfile:
+            cmd += ['-r', self.rectfile]
+        if self.fix_centers:
+            cmd += ['-f']
+        self.proc = Popen(cmd, stdin=PIPE, stdout=PIPE)
         while 'Ready!' not in self.proc.stdout.readline().decode():
             pass # wait for everything to boot up
         return self

@@ -64,7 +64,7 @@ def show_matched():
     if len(rects) != 55:
         return
 
-    with Scanner() as scanner:
+    with Scanner(rectfile=FILE) as scanner:
         scanner.load(args.imgfile)
         tick = time.time()
         facecube = scanner.scan()
