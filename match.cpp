@@ -132,7 +132,7 @@ const int N_BGRS = 16777216;
 uint16_t (*scantbl)[color::COUNT];
 
 template <int n_cubies, int n_oris, const int cubiecols[n_cubies][n_oris]>
-class Options {
+struct Options {
 
   struct Opt { // tight memory to make copying faster
     uint8_t cols[n_oris];
@@ -184,118 +184,100 @@ class Options {
     }
   }
 
-  public:
-
-    void init() { // no constructor to make it a POD allowing super fast mem-copying
-      int i = 0;
-      for (int cubie = 0; cubie < n_cubies; cubie++) {
-        for (int ori = 0; ori < n_oris; ori++) {
-          opts[i].cubie = cubie;
-          opts[i].ori = ori;
-          for (int j = 0; j < n_oris; j++) {
-            opts[i].cols[j] = cubiecols[cubie][(j + ori) % n_oris];
-            opts[i].colset |= 1 << opts[i].cols[j];
-          }
-          i++;
+  void init() { // no constructor to make it a POD allowing super fast mem-copying
+    int i = 0;
+    for (int cubie = 0; cubie < n_cubies; cubie++) {
+      for (int ori = 0; ori < n_oris; ori++) {
+        opts[i].cubie = cubie;
+        opts[i].ori = ori;
+        for (int j = 0; j < n_oris; j++) {
+          opts[i].cols[j] = cubiecols[cubie][(j + ori) % n_oris];
+          opts[i].colset |= 1 << opts[i].cols[j];
         }
-      }
-      rem = n_cubies * n_oris;
-
-      error = false;
-      colset = 0;
-      ori = - 1;
-      cubie = -1;
-    }
-
-    bool get_error() {
-      return error;
-    }
-
-    colset_t get_colset() {
-      return colset;
-    }
-
-    int get_ori() {
-      return ori;
-    }
-
-    int get_cubie() {
-      return cubie;
-    }
-
-    void has_poscol(int pos, int col) {
-      int rem1 = 0;
-      for (int i = 0; i < rem; i++) {
-        if (opts[i].cols[pos] == col)
-          opts[rem1++] = opts[i];
-      }
-      if (rem1 != rem) {
-        rem = rem1;
-        update();
-      } else
-        rem = rem1;
-    }
-
-    void hasnot_poscol(int pos, int col) {
-      int rem1 = 0;
-      for (int i = 0; i < rem; i++) {
-        if (opts[i].cols[pos] != col)
-          opts[rem1++] = opts[i];
-      }
-      if (rem1 != rem) {
-        rem = rem1;
-        update();
-      } else
-        rem = rem1;
-    }
-
-    void hasnot_col(int col) {
-      int rem1 = 0;
-      for (int i = 0; i < rem; i++) {
-        if ((opts[i].colset & (1 << col)) == 0)
-          opts[rem1++] = opts[i];
-      }
-      if (rem1 != rem) {
-        rem = rem1;
-        update();
+        i++;
       }
     }
+    rem = n_cubies * n_oris;
 
-    void has_ori(int ori) {
-      int rem1 = 0;
-      for (int i = 0; i < rem; i++) {
-        if (opts[i].ori == ori)
-          opts[rem1++] = opts[i];
-      }
-      if (rem1 != rem) {
-        rem = rem1;
-        update();
-      }
-    }
+    error = false;
+    colset = 0;
+    ori = - 1;
+    cubie = -1;
+  }
 
-    void is_cubie(int cubie) {
-      int rem1 = 0;
-      for (int i = 0; i < rem; i++) {
-        if (opts[i].cubie == cubie)
-          opts[rem1++] = opts[i];
-      }
-      if (rem1 != rem) {
-        rem = rem1;
-        update();
-      }
+  void has_poscol(int pos, int col) {
+    int rem1 = 0;
+    for (int i = 0; i < rem; i++) {
+      if (opts[i].cols[pos] == col)
+        opts[rem1++] = opts[i];
     }
+    if (rem1 != rem) {
+      rem = rem1;
+      update();
+    } else
+      rem = rem1;
+  }
 
-    void isnot_cubie(int cubie) {
-      int rem1 = 0;
-      for (int i = 0; i < rem; i++) {
-        if (opts[i].cubie != cubie)
-          opts[rem1++] = opts[i];
-      }
-      if (rem1 != rem) {
-        rem = rem1;
-        update();
-      }
+  void hasnot_poscol(int pos, int col) {
+    int rem1 = 0;
+    for (int i = 0; i < rem; i++) {
+      if (opts[i].cols[pos] != col)
+        opts[rem1++] = opts[i];
     }
+    if (rem1 != rem) {
+      rem = rem1;
+      update();
+    } else
+      rem = rem1;
+  }
+
+  void hasnot_col(int col) {
+    int rem1 = 0;
+    for (int i = 0; i < rem; i++) {
+      if ((opts[i].colset & (1 << col)) == 0)
+        opts[rem1++] = opts[i];
+    }
+    if (rem1 != rem) {
+      rem = rem1;
+      update();
+    }
+  }
+
+  void has_ori(int ori) {
+    int rem1 = 0;
+    for (int i = 0; i < rem; i++) {
+      if (opts[i].ori == ori)
+        opts[rem1++] = opts[i];
+    }
+    if (rem1 != rem) {
+      rem = rem1;
+      update();
+    }
+  }
+
+  void is_cubie(int cubie) {
+    int rem1 = 0;
+    for (int i = 0; i < rem; i++) {
+      if (opts[i].cubie == cubie)
+        opts[rem1++] = opts[i];
+    }
+    if (rem1 != rem) {
+      rem = rem1;
+      update();
+    }
+  }
+
+  void isnot_cubie(int cubie) {
+    int rem1 = 0;
+    for (int i = 0; i < rem; i++) {
+      if (opts[i].cubie != cubie)
+        opts[rem1++] = opts[i];
+    }
+    if (rem1 != rem) {
+      rem = rem1;
+      update();
+    }
+  }
 
 };
 
@@ -316,7 +298,7 @@ class CubieBuilder {
   int combs[color::COUNT][color::COUNT]; // keep track of the already found color combinations
 
   bool assign_cubie(int i) {
-    int cubie = opts[i].get_cubie();
+    int cubie = opts[i].cubie;
     if (cubie == -1 || perm[i] != -1)
       return false;
 
@@ -343,7 +325,7 @@ class CubieBuilder {
   }
 
   bool assign_ori(int i) {
-    int ori = opts[i].get_ori();
+    int ori = opts[i].ori;
     if (ori == -1 || oris[i] != -1)
       return false;
 
@@ -398,10 +380,10 @@ class CubieBuilder {
         change = false;
 
         for (int cubie = 0; cubie < n_cubies; cubie++) {
-          if (opts[cubie].get_error())
+          if (opts[cubie].error)
             return false;
 
-          colset_t diff = opts[cubie].get_colset() ^ colsets[cubie]; // latter will always be included in former
+          colset_t diff = opts[cubie].colset ^ colsets[cubie]; // latter will always be included in former
           colsets[cubie] |= diff;
           for (int col = 0; col < color::COUNT; col++) {
             if ((diff & (1 << col)) == 0)
@@ -421,7 +403,7 @@ class CubieBuilder {
             if (colcounts[col] == 0) { // all cubies of some color known
               for (int i = 0; i < n_cubies; i++) {
                 // Some `colset` update might not have been registered yet
-                if ((opts[i].get_colset() & (1 << col)) == 0) {
+                if ((opts[i].colset & (1 << col)) == 0) {
                   opts[i].hasnot_col(col);
                   change = true;
                 }
@@ -430,7 +412,7 @@ class CubieBuilder {
                 // No cubie that is not `col` (or already `col1`) can have `col1`
                 if (combs[col][col1] == 1 && colcounts[col1] == 1) {
                   for (int i = 0; i < n_cubies; i++) {
-                    if (!(opts[i].get_colset() & ((1 << col) | (1 << col1)))) {
+                    if (!(opts[i].colset & ((1 << col) | (1 << col1)))) {
                       opts[i].hasnot_col(col1);
                       change = true;
                     }
@@ -443,7 +425,7 @@ class CubieBuilder {
                 // No cubie that is not `col1` (or already `col`) can have `col`
                 if (combs[col][col1] == 1 && colcounts[col1] == 0) {
                   for (int i = 0; i < n_cubies; i++) {
-                    if (!(opts[i].get_colset() & ((1 << col) | (1 << col1)))) {
+                    if (!(opts[i].colset & ((1 << col) | (1 << col1)))) {
                       opts[i].hasnot_col(col);
                       change = true;
                     }
@@ -502,6 +484,26 @@ class CubieBuilder {
           opts[i1].is_cubie(cubie1);
           opts[i2].is_cubie(cubie2);
           change = true;
+        }
+
+        int uniq[n_cubies];
+        std::fill(uniq, uniq + n_cubies, -1);
+        for (int i = 0; i < n_cubies; i++) {
+          for (int j = 0; j < opts[i].rem; j++) {
+            int cubie = opts[i].opts[j].cubie;
+            if (uniq[cubie] == -1)
+              uniq[cubie] = i;
+            else if (uniq[cubie] != i) // not unique
+              uniq[cubie] = -2;
+          }
+        }
+        for (int i = 0; i < n_cubies; i++) {
+          if (uniq[i] == -1) // cubie completely eliminated
+            return false;
+          if (uniq[i] != -2 && opts[uniq[i]].cubie == -1) { // only exactly one option where the cubie could be
+            opts[uniq[i]].is_cubie(i);
+            change = true;
+          }
         }
       }
 
@@ -637,7 +639,7 @@ std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers) {
       if (!(succ = corners->propagate()))
         std::swap(corners1, corners);
       else if (corners->get_par() != -1 && edges->get_par() == -1) {
-        memcpy(edges1, edges, sizeof (*edges));
+        memcpy(edges1, edges, sizeof(*edges));
         edges->assign_par(corners->get_par());
         if (!(succ = edges->propagate())) {
           std::swap(corners1, corners);
@@ -748,4 +750,3 @@ int main() {
   return 0;
 }
 */
-

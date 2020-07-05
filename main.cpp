@@ -65,6 +65,8 @@ int main(int argc, char *argv[]) {
       std::cin >> file;
       frame = cv::imread(file, cv::IMREAD_COLOR);
     } else if (cmd == "scan" && !frame.empty()) {
+      auto tick = std::chrono::high_resolution_clock::now();
+
       std::vector<cv::Scalar> means;
       extract_means(frame, rects, means);
       for (int i = 0; i < N_FACELETS; i++) {
@@ -73,6 +75,10 @@ int main(int argc, char *argv[]) {
       }
       std::string facecube = match_colors(bgrs, fix_centers);
       std::cout << ((facecube == "") ? "Scan Error." : facecube) << std::endl;
+
+      std::cout << std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::high_resolution_clock::now() - tick
+      ).count() / 1000. << "ms" << std::endl;
     } else
       std::cout << "Error." << std::endl;
   }
