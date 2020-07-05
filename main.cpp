@@ -8,27 +8,31 @@
 
 int main(int argc, char *argv[]) {
   std::string rectfile = "scan.rects";
+  std::string scantbl = "scan.tbl";
   bool fix_centers = false;
   
   int opt;
-  while ((opt = getopt(argc, argv, "r:f")) != -1) {
+  while ((opt = getopt(argc, argv, "r:t:f")) != -1) {
     switch (opt) {
       case 'r':
         rectfile = optarg;
+        break;
+      case 't':
+        scantbl = optarg;
         break;
       case 'f':
         fix_centers = true;
         break;
       default:
-        std::cout << "Usage: ./scan [-r RECTFILE] [-f]" << std::endl;
-        return 1;
+        std::cout << "Usage: ./scan [-r RECTFILE = \"scan.rects\"] [-t SCANTBL = \"scan.tbl\"] [-f]" << std::endl;
+        return 0;
     }
   }
 
   std::cout << "This is rcscan v0.9; copyright Elias Frantar 2020." << std::endl << std::endl;
 
-  if (!init_match()) {
-    std::cout << "Error loading `scan.tbl`." << std::endl;
+  if (!init_match(scantbl)) {
+    std::cout << "Error loading scan-tbl." << std::endl;
     return 0;
   }
   std::vector<std::vector<cv::Rect>> rects(N_FACELETS);
@@ -47,7 +51,7 @@ int main(int argc, char *argv[]) {
   }
   for (std::vector<cv::Rect>& rs : rects) {
     if (rs.empty()) {
-      std::cout << "Invalid `scan.rects`." << std::endl;
+      std::cout << "Invalid rect-file." << std::endl;
       return 0;
     }
   }
@@ -56,7 +60,7 @@ int main(int argc, char *argv[]) {
   cv::Mat frame;
   int bgrs[N_FACELETS][3];
   
-  std::cout << "Enter >>load FILE<< to load a frame and then >>scan<< to figure out the cube state." << std::endl << std::endl;
+  std::cout << "Enter >>load FILE<< to load an image and then >>scan<< to figure out the cube state." << std::endl << std::endl;
 
   while (std::cin) {
     std::cout << "Ready!" << std::endl;

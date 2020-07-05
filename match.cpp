@@ -666,8 +666,8 @@ std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers) {
   return std::string(s, N_FACELETS);
 }
 
-bool init_match() {
-  FILE *f = fopen(TBLFILE.c_str(), "rb");
+bool init_match(const std::string& tblfile) {
+  FILE *f = fopen(tblfile.c_str(), "rb");
   if (f == NULL)
     return false;
   scantbl = new uint16_t[N_BGRS][color::COUNT];

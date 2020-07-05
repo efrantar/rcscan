@@ -3,6 +3,7 @@
 
 import os
 import pickle
+import sys
 from collections import namedtuple
 
 import cv2
@@ -38,15 +39,18 @@ def extract_cols(image, rects):
 
 
 if __name__ == '__main__': # we use some of the above functions in `setup.py`
+    if len(sys.argv) <= 1:
+        print('Usage: python train.py DATADIR')
+        exit()
+
     data = []
-    for d in os.listdir('data/'):
-        rects = read_scanrects(os.path.join('data', d, 'scan.rects'))
-        for f in os.listdir(os.path.join('data', d)):       
-            if f == 'scan.rects':
-                continue
-            labels = [c for c in f.split('.')[0]]
-            img = cv2.imread(os.path.join('data', d, f))
-            data.append((labels, extract_cols(img, rects)))
+    rects = read_scanrects(os.path.join(sys.argv[1], 'scan.rects'))
+    for f in os.listdir(os.path.join(sys.argv[1])):       
+        if f == 'scan.rects':
+            continue
+        labels = [c for c in f.split('.')[0]]
+        img = cv2.imread(os.path.join(sys.argv[1], f))
+        data.append((labels, extract_cols(img, rects)))
     print('Data loaded. (%d)' % len(data))
 
     # Red, orange, yellow, green, blue, red
