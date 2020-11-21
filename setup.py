@@ -21,6 +21,7 @@ SIZE = 5
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--rects', default='scan.rects', help='rects-file')
+parser.add_argument('--tbl', default='scan.tbl', help='scan-tbl')
 parser.add_argument('imgfile', type=str, help='image')
 args = parser.parse_args()
 
@@ -28,7 +29,10 @@ image = cv2.imread(args.imgfile)
 image1 = image.copy()
 
 FILE = args.rects
-rects = read_scanrects(FILE)
+if os.path.exists(FILE):
+    rects = read_scanrects(FILE)
+else:
+    rects = []
 i = len(rects)
 rects.append([])
 
@@ -64,10 +68,10 @@ def show_matched():
     if len(rects) != 55:
         return
 
-    with Scanner(rectfile=FILE) as scanner:
+    with Scanner(rectfile=FILE, scantbl=args.tbl) as scanner:
         scanner.load(args.imgfile)
         tick = time.time()
-        facecube = scanner.scan()
+        facecube = scanner.scan(remap=False)
         print(time.time() - tick)
 
     if facecube == '':
@@ -109,7 +113,7 @@ def handle_click(event, x, y, flags, param):
             
             rects[-1].append(Rect(x - SIZE // 2, y - SIZE // 2, SIZE, SIZE))
         else:
-            points[i_edit].append(Rect(x - SIZE // 2, y - SIZE // 2, SIZE, SIZE))
+            rects[i_edit].append(Rect(x - SIZE // 2, y - SIZE // 2, SIZE, SIZE))
             i_edit = -1
 
         show()
@@ -139,7 +143,6 @@ while True:
         break
 
 cv2.destroyAllWindows()
-scanner.disconnect()
 
 
 del rects[-1]

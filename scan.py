@@ -3,17 +3,21 @@ from subprocess import Popen, PIPE
 
 class Scanner:
 
-    def __init__(self, rectfile='', fix_centers=False):
+    def __init__(self, rectfile='', scantbl='', fix_centers=False, cwd='.'):
         self.rectfile = rectfile
+        self.scantbl = scantbl
         self.fix_centers = fix_centers
+        self.cwd = cwd
 
     def connect(self):
         cmd = ['./scan']
         if self.rectfile:
             cmd += ['-r', self.rectfile]
+        if self.scantbl:
+            cmd += ['-t', self.scantbl]
         if self.fix_centers:
             cmd += ['-f']
-        self.proc = Popen(cmd, stdin=PIPE, stdout=PIPE)
+        self.proc = Popen(cmd, stdin=PIPE, stdout=PIPE, cwd=self.cwd)
         while 'Ready!' not in self.proc.stdout.readline().decode():
             pass # wait for everything to boot up
         return self
@@ -32,13 +36,24 @@ class Scanner:
         self.proc.stdin.flush() # send command instantly
         self.proc.stdout.readline() # clear "Ready!"
 
-    def scan(self):
+    def scan(self, remap=True):
         self.proc.stdin.write('scan\n'.encode())
         self.proc.stdin.flush()
         facecube = self.proc.stdout.readline().decode()[:-1] # strip '\n'
         self.proc.stdout.readline() # clear time 
         self.proc.stdout.readline()
-        return facecube if 'Error' not in facecube else ''
+        if 'Error' in facecube:
+            return ''
+        facecube = list(facecube)
+        if remap:
+            for i, c in enumerate('URFDLB'):
+                facecube[9 * i + 4] = c
+        else:
+            cmap = {c: facecube[9 * i + 4] for i, c in enumerate('URFDLB')}
+            for i in range(len(facecube)):
+                if i % 9 != 4:
+                    facecube[i] = cmap[facecube[i]] 
+        return ''.join(facecube)
 
 
 if __name__ == '__main__':

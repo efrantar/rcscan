@@ -11,4 +11,3 @@ void extract_means(
     res[i] /= int(rects[i].size());
   }
 }
-

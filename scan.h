@@ -12,4 +12,3 @@ void extract_means(
 );
 
 #endif
-

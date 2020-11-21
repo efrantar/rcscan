@@ -563,25 +563,73 @@ std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers) {
     std::sort(order[f], order[f] + color::COUNT, [&conf, f](int i1, int i2) { return conf[f][i1] > conf[f][i2]; }); 
     order[f][color::COUNT] = order[f][color::COUNT - 1];
   }
-  
+
   std::priority_queue<std::tuple<int, int, int>> heap;
-  for (int f = 0; f < N_FACELETS; f++) {
-    if (fix_centers && f % 9 == 4) // centers are fixed
+
+  /* Solve centers first */ 
+
+  for (int f = 4; f < N_FACELETS; f += 9) {
+    if (fix_centers)
       facecube[f] = f / 9;
     else
       heap.emplace(conf[f][order[f][0]] - conf[f][order[f][1]], f, order[f][0]);
   }
 
+  auto* centers = new CentersBuilder();
+  centers->init();
+  auto* centers1 = new CentersBuilder();
+
+  for (int f = 4; f < N_FACELETS; f += 9) {
+    for (int col = 0; col < color::COUNT; col++) {
+      if (conf[f][col] > 0)
+        continue;
+      centers->notassign_col(f / 9, col);
+    }
+  }
+
+  while (!heap.empty()) {
+    auto ass = heap.top();
+    heap.pop();
+
+    int f = std::get<1>(ass);
+    int col = std::get<2>(ass);
+
+    bool succ;
+    memcpy(centers1, centers, sizeof(*centers));
+    centers->assign_col(f / 9, col);
+    if (!(succ = centers->valid()))
+      std::swap(centers1, centers);
+
+    if (!succ) {
+      int next = (std::find(order[f], order[f] + color::COUNT, col) - order[f]) + 1;
+      if (conf[f][order[f][next]] == 0)
+        return "";
+      heap.emplace(conf[f][order[f][next]] - conf[f][order[f][next + 1]], f, order[f][next]);
+    } else
+      facecube[f] = col;
+  }
+
+  // Remap colors according to center permutation
+  int cmap[6];
+  int icmap[6];
+  for (int i = 0; i < 6; i++) {
+    cmap[facecube[9 * i + 4]] = i;
+    icmap[i] = facecube[9 * i + 4];
+  }
+  
+  heap = std::priority_queue<std::tuple<int, int, int>>();
+  for (int f = 0; f < N_FACELETS; f++) {
+    if (f % 9 != 4)
+      heap.emplace(conf[f][order[f][0]] - conf[f][order[f][1]], f, cmap[order[f][0]]);
+  }
+
   // Pointers to simply swap backups back in instead of having to copy them again
   auto* corners = new CornersBuilder();
   auto* edges = new EdgesBuilder();
-  auto* centers = new CentersBuilder();
   corners->init();
   edges->init();
-  centers->init();
   auto* corners1 = new CornersBuilder();
   auto* edges1 = new EdgesBuilder();
-  auto* centers1 = new CentersBuilder();
 
   // Eliminate impossible options according to model (helps to return scan errors on unsolvable cubes)
   for (int f = 0; f < N_FACELETS; f++) {
@@ -591,11 +639,11 @@ std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers) {
       if (conf[f][col] > 0)
         continue;
       if (f % 9 == 4)
-        centers->notassign_col(f / 9, col);
+        continue;
       else if ((f % 9) % 2 == 1)
-        edges->notassign_col(cubie, pos, col);
+        edges->notassign_col(cubie, pos, cmap[col]);
       else
-        corners->notassign_col(cubie, pos, col);
+        corners->notassign_col(cubie, pos, cmap[col]);
     }
   }
   edges->propagate();
@@ -609,17 +657,10 @@ std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers) {
     int cubie = cubie::FROM_FACELET[f];
     int pos = FACELET_TO_POS[f];
     int col = std::get<2>(ass);
-    // std::cout << "assign " << f << " " << color::NAMES[col] << std::endl;
+    std::cout << "assign " << f << " " << color::NAMES[icmap[col]] << std::endl;
 
     bool succ;
-    if (f % 9 == 4) { // is a center
-      if (fix_centers)
-        continue;
-      memcpy(centers1, centers, sizeof(*centers));
-      centers->assign_col(f / 9, col);
-      if (!(succ = centers->valid()))
-        std::swap(centers1, centers);
-    } else if ((f % 9) % 2 == 1) { // is on an edge
+    if ((f % 9) % 2 == 1) { // is on an edge
       memcpy(edges1, edges, sizeof(*edges));
       edges->assign_col(cubie, pos, col);
       if (!(succ = edges->propagate()))
@@ -655,7 +696,7 @@ std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers) {
       int next = (std::find(order[f], order[f] + color::COUNT, col) - order[f]) + 1;
       if (conf[f][order[f][next]] == 0)
         return ""; // scan error
-      heap.emplace(conf[f][order[f][next]] - conf[f][order[f][next + 1]], f, order[f][next]);
+      heap.emplace(conf[f][order[f][next]] - conf[f][order[f][next + 1]], f, cmap[order[f][next]]);
     } else
       facecube[f] = col;
   }
@@ -675,78 +716,3 @@ bool init_match(const std::string& tblfile) {
   fclose(f);
   return succ;
 }
-
-/*
-int main() {
-  if (!init_match()) {
-    std::cout << "Error loading table." << std::endl;
-    return 0;
-  }
-
-  // BFLRURLFRFBUDRLDDDUUURFLBBFLLLFDBRBBRUFFLDFLDBDUUBRRUD
-  int bgrs[][3] = {
-    { 96, 149,  75},
-    {117,  31,  10},
-    {227, 203, 198},
-    { 17, 221, 245},
-    {  0, 114, 214},
-    { 25, 155, 165},
-    {180, 225, 236},
-    { 92,  24,   5},
-    { 20, 159, 174},
-    {169, 147, 149},
-    {139, 184, 130},
-    { 70, 142, 248},
-    {110, 137, 180},
-    { 10, 199, 226},
-    {254, 255, 251},
-    {111, 142, 182},
-    { 88, 115, 165},
-    { 17,  35, 135},
-    {111, 169, 250},
-    {133, 142, 208},
-    { 98, 129, 212},
-    {162, 255, 254},
-    { 80,  44,  22},
-    {204, 212, 228},
-    {104, 168,  99},
-    { 93, 129,  84},
-    {113,  83,  80},
-    {136, 139, 139},
-    {161, 159, 158},
-    {174, 167, 164},
-    { 91,  42,  26},
-    {  4,  10,  71},
-    {134, 140, 100},
-    { 66, 134, 134},
-    {126, 132,  93},
-    {133, 143, 106},
-    { 74, 162, 184},
-    { 87, 112, 204},
-    {120,  79,  63},
-    {113,  88,  85},
-    {152, 159, 162},
-    { 67,  66, 116},
-    { 90,  60,  56},
-    {152, 171, 179},
-    { 38,  40,  98},
-    {160, 193,  97},
-    { 58,  65, 119},
-    { 91, 120, 192},
-    { 52, 113, 232},
-    { 93, 122,  41},
-    { 87, 172, 177},
-    { 91, 218, 218},
-    { 79, 115, 202},
-    {100, 100, 115}
-  };
-
-  auto tick = std::chrono::high_resolution_clock::now();
-  std::cout << match_colors(bgrs) << std::endl;
-  std::cout << std::chrono::duration_cast<std::chrono::microseconds>(
-    std::chrono::high_resolution_clock::now() - tick
-  ).count() / 1000. << "ms" << std::endl;
-
-  return 0;
-}
-*/

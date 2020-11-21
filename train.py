@@ -18,6 +18,8 @@ COL_ORDER = {
 Rect = namedtuple('Rect', ['x', 'y', 'width', 'height'])
 
 def read_scanrects(filename):
+    if not os.path.exists(filename):
+        return []
     with open(filename, 'r') as f:
         rects = []
         for line in f.readlines():
@@ -39,13 +41,13 @@ def extract_cols(image, rects):
 
 
 if __name__ == '__main__': # we use some of the above functions in `setup.py`
-    if len(sys.argv) <= 1:
-        print('Usage: python train.py DATADIR')
+    if len(sys.argv) <= 2:
+        print('Usage: python train.py DATADIR OUTFILE')
         exit()
 
     data = []
     rects = read_scanrects(os.path.join(sys.argv[1], 'scan.rects'))
-    for f in os.listdir(os.path.join(sys.argv[1])):       
+    for f in os.listdir(os.path.join(sys.argv[1])):     
         if f == 'scan.rects':
             continue
         labels = [c for c in f.split('.')[0]]
@@ -101,6 +103,5 @@ if __name__ == '__main__': # we use some of the above functions in `setup.py`
         table.append(model.predict_proba(batch) * model.n_neighbors) # will always be integer
     table = np.concatenate(table, axis=0)
     table = table.astype(np.uint16)
-    table.tofile('scan.tbl')
+    table.tofile(sys.argv[2])
     print('Done.')
-
