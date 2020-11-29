@@ -657,7 +657,7 @@ std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers) {
     int cubie = cubie::FROM_FACELET[f];
     int pos = FACELET_TO_POS[f];
     int col = std::get<2>(ass);
-    std::cout << "assign " << f << " " << color::NAMES[icmap[col]] << std::endl;
+    // std::cout << "assign " << f << " " << color::NAMES[icmap[col]] << std::endl;
 
     bool succ;
     if ((f % 9) % 2 == 1) { // is on an edge
@@ -693,7 +693,7 @@ std::string match_colors(const int bgrs[N_FACELETS][3], bool fix_centers) {
 
     if (!succ) {
       // std::cout << "elim " << std::endl;
-      int next = (std::find(order[f], order[f] + color::COUNT, col) - order[f]) + 1;
+      int next = (std::find(order[f], order[f] + color::COUNT, icmap[col]) - order[f]) + 1;
       if (conf[f][order[f][next]] == 0)
         return ""; // scan error
       heap.emplace(conf[f][order[f][next]] - conf[f][order[f][next + 1]], f, cmap[order[f][next]]);
